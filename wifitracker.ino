@@ -37,6 +37,19 @@ static int do_ls(int argc, char *argv[])
     return 0;
 }
 
+static int do_mv(int argc, char *argv[])
+{
+    if (argc != 3) {
+        print("syntax: mv <oldname> <newname>\n");
+        return -1;
+    }
+    if (!SPIFFS.rename(argv[1], argv[2])) {
+        return -1;
+    }
+    
+    return 0;
+}
+
 static int do_scan(int argc, char *argv[])
 {
     int n = WiFi.scanNetworks();
@@ -82,6 +95,7 @@ static const cmd_t commands[] = {
     {"scan",    do_scan,    "scan networks"},
     {"id",      do_id,      "reads various ids"},
     {"ls",      do_ls,      "list files"},
+    {"mv",      do_mv,      "<oldname> <newname> rename file"},
     {"info",    do_info,    "file system info"},
     {"", NULL, ""}
 };
