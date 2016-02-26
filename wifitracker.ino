@@ -50,6 +50,30 @@ static int do_mv(int argc, char *argv[])
     return 0;
 }
 
+static int do_cat(int argc, char *argv[])
+{
+    if (argc < 1) {
+        print("syntax: cat <filename>\n");
+        return -1;
+    }
+
+    // open file
+    File f = SPIFFS.open(argv[1], "r");
+    if (f < 0) {
+        print("file open '%s' failed!\n", argv[1]);
+        return -1;
+    }
+
+    int c;
+    while ((c = f.read()) > 0) {
+        print("%c", c); 
+    }
+
+    f.close();
+    return 0;
+}
+
+
 static int do_scan(int argc, char *argv[])
 {
     int n = WiFi.scanNetworks();
@@ -97,6 +121,7 @@ static const cmd_t commands[] = {
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
     {"info",    do_info,    "file system info"},
+    {"cat",     do_cat,     "<filename> show file contents"},
     {"", NULL, ""}
 };
 
