@@ -7,9 +7,10 @@
 #include "hal.h"
 
 #include "ESP8266WiFi.h"
+#include "FS.h"
 
 // formats a printf style string and sends it to the serial port
-static void print(char *fmt, ...)
+static void print(const char *fmt, ...)
 {
     // format it
     char buf[128];
@@ -23,6 +24,17 @@ static void print(char *fmt, ...)
     while (*p != 0) {
         serial_putc(*p++);
     }
+}
+
+static int do_ls(int argc, char *argv[])
+{
+    Dir dir = SPIFFS.openDir("/");
+    while (dir.next()) {
+        print(dir.fileName().c_str());
+        File f = dir.openFile("r");
+        print("%d\n", f.size());
+    }
+    return 0;
 }
 
 static int do_scan(int argc, char *argv[])
@@ -56,6 +68,7 @@ static const cmd_t commands[] = {
     {"help",    do_help,    "lists all commands"},
     {"scan",    do_scan,    "scan networks"},
     {"id",      do_id,      "reads various ids"},
+    {"ls",      do_ls,      "list files"},
     {"", NULL, ""}
 };
 
@@ -77,6 +90,8 @@ void setup()
 
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
+    
+    SPIFFS.begin();
 }
 
 void loop()
