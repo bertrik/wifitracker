@@ -38,6 +38,16 @@ static int do_scan(int argc, char *argv[])
     return n;
 }
 
+static int do_id(int argc, char *argv[])
+{
+    print("chipid:          %08X\n", ESP.getChipId());
+    print("flash chip id:   %08X\n", ESP.getFlashChipId());
+    print("flash chip size: %d\n", ESP.getFlashChipSize());
+    print("flash chip speed:%d\n", ESP.getFlashChipSpeed());
+
+    return 0;
+}
+
 
 // forward declaration of help function
 static int do_help(int argc, char *argv[]);
@@ -45,6 +55,7 @@ static int do_help(int argc, char *argv[]);
 static const cmd_t commands[] = {
     {"help",    do_help,    "lists all commands"},
     {"scan",    do_scan,    "scan networks"},
+    {"id",      do_id,      "reads various ids"},
     {"", NULL, ""}
 };
 
