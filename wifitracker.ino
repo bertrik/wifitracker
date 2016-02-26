@@ -30,9 +30,9 @@ static int do_ls(int argc, char *argv[])
 {
     Dir dir = SPIFFS.openDir("/");
     while (dir.next()) {
-        print(dir.fileName().c_str());
         File f = dir.openFile("r");
-        print("%d\n", f.size());
+        print("%8d %s\n", f.size(), f.name());
+        f.close();
     }
     return 0;
 }
@@ -48,6 +48,19 @@ static int do_scan(int argc, char *argv[])
             WiFi.RSSI(i), WiFi.SSID(i).c_str());
     }
     return n;
+}
+
+static int do_info(int argc, char *argv[])
+{
+    FSInfo fs_info;
+    SPIFFS.info(fs_info);
+
+    print("total bytes: %d\n", fs_info.totalBytes);
+    print("used bytes:  %d\n", fs_info.usedBytes);
+    print("block size:  %d\n", fs_info.blockSize);
+    print("page size:   %d\n", fs_info.pageSize);
+
+    return 0;
 }
 
 static int do_id(int argc, char *argv[])
@@ -69,6 +82,7 @@ static const cmd_t commands[] = {
     {"scan",    do_scan,    "scan networks"},
     {"id",      do_id,      "reads various ids"},
     {"ls",      do_ls,      "list files"},
+    {"info",    do_info,    "file system info"},
     {"", NULL, ""}
 };
 
