@@ -16,7 +16,7 @@ static void print(const char *fmt, ...)
     char buf[128];
     va_list args;
     va_start (args, fmt);
-    vsnprintf(buf, 128, fmt, args);
+    vsnprintf(buf, sizeof(buf), fmt, args);
     va_end (args);
 
     // send it to serial
