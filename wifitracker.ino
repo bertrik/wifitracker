@@ -87,7 +87,7 @@ static int do_scan(int argc, char *argv[])
     return n;
 }
 
-static int do_info(int argc, char *argv[])
+static int do_fsinfo(int argc, char *argv[])
 {
     FSInfo fs_info;
     SPIFFS.info(fs_info);
@@ -120,7 +120,7 @@ static const cmd_t commands[] = {
     {"id",      do_id,      "reads various ids"},
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
-    {"info",    do_info,    "file system info"},
+    {"fsinfo",  do_fsinfo,    "file system info"},
     {"cat",     do_cat,     "<filename> show file contents"},
     {"", NULL, ""}
 };
