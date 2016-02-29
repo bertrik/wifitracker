@@ -52,14 +52,14 @@ static int do_mv(int argc, char *argv[])
 
 static int do_cat(int argc, char *argv[])
 {
-    if (argc < 1) {
+    if (argc != 2) {
         print("syntax: cat <filename>\n");
         return -1;
     }
 
     // open file
     File f = SPIFFS.open(argv[1], "r");
-    if (f < 0) {
+    if (f <= 0) {
         print("file open '%s' failed!\n", argv[1]);
         return -1;
     }
