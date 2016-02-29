@@ -104,7 +104,7 @@ static int do_id(int argc, char *argv[])
 {
     print("chipid:          %08X\n", ESP.getChipId());
     print("flash chip id:   %08X\n", ESP.getFlashChipId());
-    print("flash chip size: %d\n", ESP.getFlashChipSize());
+    print("flash chip size: %8d\n", ESP.getFlashChipSize());
     print("flash chip speed:%d\n", ESP.getFlashChipSpeed());
 
     return 0;
