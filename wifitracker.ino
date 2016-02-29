@@ -50,6 +50,19 @@ static int do_mv(int argc, char *argv[])
     return 0;
 }
 
+static int do_rm(int argc, char *argv[])
+{
+    if (argc != 2) {
+        print("syntax: rm <filename>\n");
+        return -1;
+    }
+    if (!SPIFFS.remove(argv[1])) {
+        return -1;
+    }
+    
+    return 0;
+}
+
 static int do_cat(int argc, char *argv[])
 {
     if (argc != 2) {
@@ -120,6 +133,7 @@ static const cmd_t commands[] = {
     {"id",      do_id,      "reads various ids"},
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
+    {"rm",      do_rm,      "<name> remove file"},
     {"fsinfo",  do_fsinfo,    "file system info"},
     {"cat",     do_cat,     "<filename> show file contents"},
     {"", NULL, ""}
