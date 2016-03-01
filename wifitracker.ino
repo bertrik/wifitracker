@@ -123,6 +123,13 @@ static int do_id(int argc, char *argv[])
     return 0;
 }
 
+static int do_wifi(int argc, char *argv[])
+{
+    WiFi.printDiag(Serial);
+
+    return 0;
+}
+
 
 // forward declaration of help function
 static int do_help(int argc, char *argv[]);
@@ -134,8 +141,9 @@ static const cmd_t commands[] = {
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
     {"rm",      do_rm,      "<name> remove file"},
-    {"fsinfo",  do_fsinfo,    "file system info"},
+    {"fsinfo",  do_fsinfo,  "file system info"},
     {"cat",     do_cat,     "<filename> show file contents"},
+    {"wifi",    do_wifi,    "wifi commands"},
     {"", NULL, ""}
 };
 
@@ -157,11 +165,15 @@ void setup()
 
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
-    
+
     uint8_t mac[6];
     WiFi.macAddress(mac);
     print("ESP MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]); 
+
+    IPAddress ip;
+    ip = WiFi.localIP();
+    Serial.println(ip);
     
     SPIFFS.begin();
 }
