@@ -9,6 +9,11 @@
 #include "ESP8266WiFi.h"
 #include "FS.h"
 
+#include "Wire.h"
+#include "RtcDS3231.h"
+
+static RtcDS3231 rtc;
+
 // formats a printf style string and sends it to the serial port
 static void print(const char *fmt, ...)
 {
@@ -130,6 +135,16 @@ static int do_wifi(int argc, char *argv[])
     return 0;
 }
 
+static int do_rtc(int argc, char *argv[])
+{
+    RtcTemperature t = rtc.GetTemperature();
+    print("Temperature: %3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
+
+    RtcDateTime dt = rtc.GetDateTime();
+    print("Date/time: %04d-%02d-%02d %02d:%02d:%02d\n", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+    return 0;
+}
+
 
 // forward declaration of help function
 static int do_help(int argc, char *argv[]);
@@ -144,6 +159,7 @@ static const cmd_t commands[] = {
     {"fsinfo",  do_fsinfo,  "file system info"},
     {"cat",     do_cat,     "<filename> show file contents"},
     {"wifi",    do_wifi,    "wifi commands"},
+    {"rtc",     do_rtc,     "rtc commands"},
     {"", NULL, ""}
 };
 
@@ -171,11 +187,10 @@ void setup()
     print("ESP MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]); 
 
-    IPAddress ip;
-    ip = WiFi.localIP();
-    Serial.println(ip);
-    
     SPIFFS.begin();
+
+    Wire.begin();
+    rtc.Begin();
 }
 
 void loop()
