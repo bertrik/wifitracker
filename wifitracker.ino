@@ -137,11 +137,37 @@ static int do_wifi(int argc, char *argv[])
 
 static int do_rtc(int argc, char *argv[])
 {
+    // get current date/time
+    RtcDateTime dt = rtc.GetDateTime();
+    int year = dt.Year();
+    int month = dt.Month();
+    int day = dt.Day();
+    int hour = dt.Hour();
+    int minute = dt.Minute();
+    int second = dt.Second();
+
+    if (argc == 5) {
+        if (strcmp(argv[1], "date") == 0) {
+            // modify date fields
+            year = atoi(argv[2]);
+            month = atoi(argv[3]);
+            day = atoi(argv[4]);
+        }
+        if (strcmp(argv[1], "time") == 0) {
+            // modify time fields
+            hour = atoi(argv[2]);
+            minute = atoi(argv[3]);
+            second = atoi(argv[4]);
+        }
+        dt = RtcDateTime(year, month, day, hour, minute, second);
+        rtc.SetDateTime(dt);
+    }
+    
+    print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
+
     RtcTemperature t = rtc.GetTemperature();
     print("Temperature: %3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
 
-    RtcDateTime dt = rtc.GetDateTime();
-    print("Date/time: %04d-%02d-%02d %02d:%02d:%02d\n", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
     return 0;
 }
 
