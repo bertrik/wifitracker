@@ -14,7 +14,6 @@
 #include "WiFiUdp.h"
 
 static RtcDS3231 rtc;
-static WiFiUDP udp;
 
 // formats a printf style string and sends it to the serial port
 static void print(const char *fmt, ...)
@@ -35,7 +34,11 @@ static void print(const char *fmt, ...)
 
 static int do_ls(int argc, char *argv[])
 {
-    Dir dir = SPIFFS.openDir("/");
+    const char *dirname = "/";
+    if (argc > 1) {
+        dirname = argv[1];
+    }
+    Dir dir = SPIFFS.openDir(dirname);
     while (dir.next()) {
         File f = dir.openFile("r");
         print("%8d %s\n", f.size(), f.name());
@@ -67,6 +70,23 @@ static int do_rm(int argc, char *argv[])
         return -1;
     }
     
+    return 0;
+}
+
+static int do_touch(int argc, char *argv[])
+{
+    if (argc < 2) {
+        print("Usage: touch <file>\n");
+        return -1;
+    }
+    
+    char *name = argv[1];
+
+    File f = SPIFFS.open(name, "w");
+    if (f > 0) {
+        f.println("Hello!");
+        f.close();
+    }
     return 0;
 }
 
@@ -176,6 +196,7 @@ static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *s
 
     // send it
     print("sending NTP packet...\n");
+    WiFiUDP udp;
     udp.begin(localPort);
     udp.beginPacket(address, 123); //NTP requests are to port 123
     udp.write(buf, sizeof(buf));
@@ -274,6 +295,7 @@ static const cmd_t commands[] = {
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
     {"rm",      do_rm,      "<name> remove file"},
+    {"touch",   do_touch,   "create file"},
     {"fsinfo",  do_fsinfo,  "file system info"},
     {"cat",     do_cat,     "<filename> show file contents"},
     {"wifi",    do_wifi,    "wifi commands"},
