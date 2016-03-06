@@ -11,8 +11,10 @@
 
 #include "Wire.h"
 #include "RtcDS3231.h"
+#include "WiFiUdp.h"
 
 static RtcDS3231 rtc;
+static WiFiUDP udp;
 
 // formats a printf style string and sends it to the serial port
 static void print(const char *fmt, ...)
@@ -130,9 +132,85 @@ static int do_id(int argc, char *argv[])
 
 static int do_wifi(int argc, char *argv[])
 {
-    WiFi.printDiag(Serial);
+    if (argc >= 2) {
+        char *cmd = argv[1];
+        if (strcmp(cmd, "begin") == 0) {
+            if (argc == 3) {
+                char *ssid = argv[2];
+                print("Connecting to %s\n", ssid);
+                WiFi.begin(ssid);
+            } else if (argc == 4) {
+                char *ssid = argv[2];
+                char *pass = argv[3];
+                print("Connecting to %s, password %s\n", ssid, pass);
+                WiFi.begin(ssid, pass);
+            }
+        } else if (strcmp(cmd, "diag") == 0) {
+            WiFi.printDiag(Serial);
+        }
+    }
+    
+    int status = WiFi.status();
+    print("Wifi status = %d\n", status);
+
 
     return 0;
+}
+
+#define NTP_PACKET_SIZE 48
+
+static void sendNTPpacket(IPAddress& address) {
+    uint8_t packetBuffer[48];
+    
+    print("sending NTP packet...\n");
+    // set all bytes in the buffer to 0
+    memset(packetBuffer, 0, NTP_PACKET_SIZE);
+    // Initialize values needed to form NTP request
+    // (see URL above for details on the packets)
+    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+    packetBuffer[1] = 0;     // Stratum, or type of clock
+    packetBuffer[2] = 6;     // Polling Interval
+    packetBuffer[3] = 0xEC;  // Peer Clock Precision
+    // 8 bytes of zero for Root Delay & Root Dispersion
+    packetBuffer[12]  = 49;
+    packetBuffer[13]  = 0x4E;
+    packetBuffer[14]  = 49;
+    packetBuffer[15]  = 52;
+
+    // all NTP fields have been given values, now
+    // you can send a packet requesting a timestamp:
+    udp.begin(2390);
+    udp.beginPacket(address, 123); //NTP requests are to port 123
+    udp.write(packetBuffer, NTP_PACKET_SIZE);
+    udp.endPacket();
+}
+
+static int do_ntp(int argc, char *argv[])
+{
+    const char *hostname = "nl.pool.ntp.org";
+    if ((argc == 2) && strcmp(argv[1], "send") == 0) {
+        print("Sending ...");
+        IPAddress ip;
+        WiFi.hostByName(hostname, ip);
+        Serial.println(ip);
+        sendNTPpacket(ip);
+    }
+    
+    int cb = udp.parsePacket();
+    if (cb > 0) {
+        print("Got %d bytes\n", cb);
+        uint8_t buf[48];
+        udp.read(buf, sizeof(buf));
+        
+        unsigned long highWord = word(buf[40], buf[41]);
+        unsigned long lowWord = word(buf[42], buf[43]);
+        unsigned long secsSince1900 = highWord << 16 | lowWord;
+        // convert to seconds since 2000-1-1 00:00:00
+        uint32_t relsec = secsSince1900 - 3155673600;
+        RtcDateTime dt = RtcDateTime(relsec);
+        print("Seting date/time to %04d-%02d-%02d %02d:%02d:%02d\n", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+        rtc.SetDateTime(dt);
+    }
 }
 
 static int do_rtc(int argc, char *argv[])
@@ -186,6 +264,7 @@ static const cmd_t commands[] = {
     {"cat",     do_cat,     "<filename> show file contents"},
     {"wifi",    do_wifi,    "wifi commands"},
     {"rtc",     do_rtc,     "rtc commands"},
+    {"ntp",     do_ntp,     "ntp commands"},
     {"", NULL, ""}
 };
 
