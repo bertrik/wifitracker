@@ -159,58 +159,72 @@ static int do_wifi(int argc, char *argv[])
 
 #define NTP_PACKET_SIZE 48
 
-static void sendNTPpacket(IPAddress& address) {
-    uint8_t packetBuffer[48];
-    
-    print("sending NTP packet...\n");
-    // set all bytes in the buffer to 0
-    memset(packetBuffer, 0, NTP_PACKET_SIZE);
-    // Initialize values needed to form NTP request
-    // (see URL above for details on the packets)
-    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-    packetBuffer[1] = 0;     // Stratum, or type of clock
-    packetBuffer[2] = 6;     // Polling Interval
-    packetBuffer[3] = 0xEC;  // Peer Clock Precision
+static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *secsSince2000)
+{
+    // prepare NTP packet
+    uint8_t buf[NTP_PACKET_SIZE];
+    memset(buf, 0, sizeof(buf));
+    buf[0] = 0b11100011;   // LI, Version, Mode
+    buf[1] = 0;     // Stratum, or type of clock
+    buf[2] = 6;     // Polling Interval
+    buf[3] = 0xEC;  // Peer Clock Precision
     // 8 bytes of zero for Root Delay & Root Dispersion
-    packetBuffer[12]  = 49;
-    packetBuffer[13]  = 0x4E;
-    packetBuffer[14]  = 49;
-    packetBuffer[15]  = 52;
+    buf[12] = 49;
+    buf[13] = 0x4E;
+    buf[14] = 49;
+    buf[15] = 52;
 
-    // all NTP fields have been given values, now
-    // you can send a packet requesting a timestamp:
-    udp.begin(2390);
+    // send it
+    print("sending NTP packet...\n");
+    udp.begin(localPort);
     udp.beginPacket(address, 123); //NTP requests are to port 123
-    udp.write(packetBuffer, NTP_PACKET_SIZE);
+    udp.write(buf, sizeof(buf));
     udp.endPacket();
+    
+    // wait for response
+    print("waiting for response...");
+    int cb;
+    unsigned long start = millis();
+    while ((cb = udp.parsePacket()) <= 0) {
+        if ((millis() - start) > timeout) {
+            print("timeout!\n");
+            return -1;
+        }
+        delay(10);
+    }
+    print("got %d bytes\n", cb);
+
+    // decode response
+    udp.read(buf, sizeof(buf));
+    unsigned long highWord = word(buf[40], buf[41]);
+    unsigned long lowWord = word(buf[42], buf[43]);
+    unsigned long secsSince1900 = highWord << 16 | lowWord;
+    // convert to seconds since 2000-1-1 00:00:00
+    *secsSince2000 = secsSince1900 - 3155673600;
+
+    return 0;
 }
 
 static int do_ntp(int argc, char *argv[])
 {
-    const char *hostname = "nl.pool.ntp.org";
-    if ((argc == 2) && strcmp(argv[1], "send") == 0) {
-        print("Sending ...");
+    char *hostname = "nl.pool.ntp.org";
+    if ((argc >= 2) && strcmp(argv[1], "sync") == 0) {
+        if (argc == 3) {
+            hostname = argv[2];
+        }
+        print("Performing SNTP sync using %s\n", hostname);
         IPAddress ip;
         WiFi.hostByName(hostname, ip);
         Serial.println(ip);
-        sendNTPpacket(ip);
+        uint32_t seconds;
+        if (sntp_sync(2390, ip, 3000, &seconds) >= 0) {
+            RtcDateTime dt = RtcDateTime(seconds);
+            print("Setting date/time to %04d-%02d-%02d %02d:%02d:%02d\n", 
+                dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+            rtc.SetDateTime(dt);
+        }
     }
-    
-    int cb = udp.parsePacket();
-    if (cb > 0) {
-        print("Got %d bytes\n", cb);
-        uint8_t buf[48];
-        udp.read(buf, sizeof(buf));
-        
-        unsigned long highWord = word(buf[40], buf[41]);
-        unsigned long lowWord = word(buf[42], buf[43]);
-        unsigned long secsSince1900 = highWord << 16 | lowWord;
-        // convert to seconds since 2000-1-1 00:00:00
-        uint32_t relsec = secsSince1900 - 3155673600;
-        RtcDateTime dt = RtcDateTime(relsec);
-        print("Seting date/time to %04d-%02d-%02d %02d:%02d:%02d\n", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
-        rtc.SetDateTime(dt);
-    }
+    return 0;
 }
 
 static int do_rtc(int argc, char *argv[])
