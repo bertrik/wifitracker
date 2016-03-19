@@ -275,6 +275,21 @@ static int do_rtc(int argc, char *argv[])
         dt = RtcDateTime(year, month, day, hour, minute, second);
         rtc.SetDateTime(dt);
     }
+    if (argc == 2) {
+        if (strcmp(argv[1], "alarm") == 0) {
+            print("Setting alarm!\n");
+ 
+            RtcDateTime dt = rtc.GetDateTime() + 10;
+
+            DS3231AlarmOne alarm1(
+                    dt.Day(),
+                    dt.Hour(),
+                    dt.Minute(), 
+                    dt.Second(),
+                    DS3231AlarmOneControl_HoursMinutesSecondsMatch);
+            rtc.SetAlarmOne(alarm1);
+        }
+    }
     
     print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
 
@@ -284,6 +299,15 @@ static int do_rtc(int argc, char *argv[])
     return 0;
 }
 
+static int do_sleep(int argc, char *argv[])
+{
+    if (argc == 2) {
+        long t = atoi(argv[1]);
+        print("Sleeping for %d...\n", t);
+        ESP.deepSleep(t, WAKE_RF_DISABLED);
+        print("Woke up!\n");
+    }
+}
 
 // forward declaration of help function
 static int do_help(int argc, char *argv[]);
@@ -301,6 +325,7 @@ static const cmd_t commands[] = {
     {"wifi",    do_wifi,    "wifi commands"},
     {"rtc",     do_rtc,     "rtc commands"},
     {"ntp",     do_ntp,     "ntp commands"},
+    {"sleep",   do_sleep,   "sleep commands"},
     {"", NULL, ""}
 };
 
@@ -329,6 +354,10 @@ void setup()
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]); 
 
     SPIFFS.begin();
+
+    rtc.LatchAlarmsTriggeredFlags();             
+    rtc.Enable32kHzPin(false);
+    rtc.SetSquareWavePin(DS3231SquareWavePin_ModeAlarmOne);
 
     Wire.begin();
     rtc.Begin();
