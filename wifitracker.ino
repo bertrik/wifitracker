@@ -12,6 +12,7 @@
 #include "Wire.h"
 #include "RtcDS3231.h"
 #include "WiFiUdp.h"
+#include "ESP8266HTTPClient.h"
 
 static RtcDS3231 rtc;
 
@@ -307,6 +308,33 @@ static int do_sleep(int argc, char *argv[])
         ESP.deepSleep(t, WAKE_RF_DISABLED);
         print("Woke up!\n");
     }
+    return 0;
+}
+
+static int do_http(int argc, char *argv[])
+{
+    char *cmd = "GET";
+    if (argc > 1) {
+        cmd = argv[1];
+    }
+    char *url = "http://posttestserver.com/post.php";
+    if (argc > 2) {
+        url = argv[2];
+    }
+    print("Going to perform HTTP %s on '%s'...\n", cmd, url);
+    
+    char payload[64];
+    sprintf(payload, "Hello, this is ESP...\n");
+    
+    HTTPClient client;
+    client.begin(url);
+    int res = client.sendRequest(cmd, (uint8_t *)payload, strlen(payload));
+    if (res == HTTP_CODE_OK) {
+        print("response: %s\n", client.getString().c_str());
+    }
+    client.end();
+    
+    return res;
 }
 
 // forward declaration of help function
@@ -326,6 +354,7 @@ static const cmd_t commands[] = {
     {"rtc",     do_rtc,     "rtc commands"},
     {"ntp",     do_ntp,     "ntp commands"},
     {"sleep",   do_sleep,   "sleep commands"},
+    {"http",    do_http,    "[get|post] http commands"},
     {"", NULL, ""}
 };
 
