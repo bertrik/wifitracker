@@ -117,14 +117,44 @@ static int do_cat(int argc, char *argv[])
 
 static int do_scan(int argc, char *argv[])
 {
+    // scan
     int n = WiFi.scanNetworks();
     print("Found %d networks:\n", n);
+
+    // open a file with the date as name
+    RtcDateTime dt = rtc.GetDateTime();
+    char filename[16];
+    sprintf(filename, "/%04d%02d%02d.log", dt.Year(), dt.Month(), dt.Day());
+    File f = SPIFFS.open(filename, "a");
+    if (!f) {
+        print("File open failed!\n");
+        return -1;
+    }
+
+    char line[256];
+    f.print("{\"deviceid\":\"112233445566\",");
+
+    f.print("\"datetime\":");
+    sprintf(line, "%04d-%02d-%02d %02d:%02d:%02d", dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+    f.print("\"");
+    f.print(line);
+    f.print("\",");
+
+    f.print("\"scan\":[");
     for (int i = 0; i < n; i++) {
         uint8_t *mac = WiFi.BSSID(i);
-        print("%02X:%02X:%02X:%02X:%02X:%02X/%3d/%s\n", 
+        sprintf(line, "{\"mac\":\"%02X:%02X:%02X:%02X:%02X:%02X\", \"rssi\":%d}", 
             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-            WiFi.RSSI(i), WiFi.SSID(i).c_str());
+            WiFi.RSSI(i));
+        print("%s\n", line);            
+        f.print(line);
+        if (i < (n - 1)) {
+            f.print(",");
+        }
     }
+    f.println("]}");
+    f.close();
+    
     return n;
 }
 
@@ -304,8 +334,8 @@ static int do_sleep(int argc, char *argv[])
 {
     if (argc == 2) {
         long t = atoi(argv[1]);
-        print("Sleeping for %d...\n", t);
-        ESP.deepSleep(t, WAKE_RF_DISABLED);
+        print("Sleeping for %d ms...\n", t);
+        ESP.deepSleep(1000L * t, WAKE_RF_DISABLED);
         print("Woke up!\n");
     }
     return 0;
