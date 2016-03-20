@@ -220,10 +220,6 @@ static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *s
     buf[2] = 6;     // Polling Interval
     buf[3] = 0xEC;  // Peer Clock Precision
     // 8 bytes of zero for Root Delay & Root Dispersion
-    buf[12] = 49;
-    buf[13] = 0x4E;
-    buf[14] = 49;
-    buf[15] = 52;
 
     // send it
     print("sending NTP packet...\n");
