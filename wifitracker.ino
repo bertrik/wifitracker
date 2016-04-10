@@ -14,7 +14,11 @@
 #include "WiFiUdp.h"
 #include "ESP8266HTTPClient.h"
 
+// the pin we use to determine run or debug mode
+#define PIN_RUNMODE D5
+
 static RtcDS3231 rtc;
+static boolean runMode;
 
 // formats a printf style string and sends it to the serial port
 static void print(const char *fmt, ...)
@@ -114,49 +118,8 @@ static int do_cat(int argc, char *argv[])
     return 0;
 }
 
-char big[2048];
+static HTTPClient client;
 
-static HTTPClient client;  
-
-static int submit_to_google(int n)
-{
-    char line[128];
-    
-    sprintf(line, "{\"wifiAccessPoints\": [\n");
-    strcpy(big, line);
-    for (int i = 0; i < n; i++) {
-        uint8_t *mac = WiFi.BSSID(i);
-        sprintf(line, "{\"macAddress\":\"%02X:%02X:%02X:%02X:%02X:%02X\",\"signalStrength\":%d}",
-            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], WiFi.RSSI(i));
-        strcat(big, line);
-        if (i < (n - 1)) {
-            strcat(big, ",");
-        }
-        strcat(big, "\n");
-        Serial.println(line);
-    }
-    strcat(big, "]}\n");
-//    Serial.print(big);
-    
-    const char *url = "https://www.googleapis.com/geolocation/v1/geolocate?key=<your api key here>";
-    
-    int size = strlen(big);
-    print("Sending POST request (%d bytes)...", size);
-
-    client.begin(url);
-    client.addHeader("Content-Type", "application/json");
-    char header[16];
-    sprintf(header, "%d", size);
-    client.addHeader("Content-Length", header);
-    int res = client.POST((uint8_t *)big, size);
-    print("code %d\n", res);
-    if (res == HTTP_CODE_OK) {
-        Serial.println(client.getString());
-    }
-    client.end();
-    
-    return res;
-}
 
 static int do_scan(int argc, char *argv[])
 {
@@ -164,9 +127,6 @@ static int do_scan(int argc, char *argv[])
     print("Scanning ... ");
     int n = WiFi.scanNetworks();
     print("found %d networks:\n", n);
-    if ((argc > 1) && (strcmp(argv[1], "google") == 0)) {
-        return submit_to_google(n);
-    }
 
     // open a file with the date as name
     RtcDateTime dt = rtc.GetDateTime();
@@ -182,7 +142,7 @@ static int do_scan(int argc, char *argv[])
     sprintf(line, "{\"deviceid\":\"%08X\",", ESP.getChipId());
     f.print(line);
 
-    sprintf(line, "\"datetime\":\"%04d-%02d-%02d %02d:%02d:%02d\"", 
+    sprintf(line, "\"datetime\":\"%04d-%02d-%02d %02d:%02d:%02d\",", 
         dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
     f.print(line);
 
@@ -222,6 +182,7 @@ static int do_id(int argc, char *argv[])
     print("chipid:          %08X\n", ESP.getChipId());
     print("flash chip id:   %08X\n", ESP.getFlashChipId());
     print("flash chip size: %8d\n", ESP.getFlashChipSize());
+    print("flash real size: %8d\n", ESP.getFlashChipRealSize());
     print("flash chip speed:%d\n", ESP.getFlashChipSpeed());
 
     return 0;
@@ -229,29 +190,34 @@ static int do_id(int argc, char *argv[])
 
 static int do_wifi(int argc, char *argv[])
 {
-    if (argc >= 2) {
-        char *cmd = argv[1];
-        if (strcmp(cmd, "begin") == 0) {
-            if (argc == 3) {
-                char *ssid = argv[2];
-                print("Connecting to %s\n", ssid);
-                WiFi.begin(ssid);
-            } else if (argc == 4) {
-                char *ssid = argv[2];
-                char *pass = argv[3];
-                print("Connecting to %s, password %s\n", ssid, pass);
-                WiFi.begin(ssid, pass);
+    if (argc > 1) {
+        char *ssid = argv[1];
+        if (argc == 2) {
+            // connect without password
+            print("Connecting to AP %s\n", ssid);
+            WiFi.begin(ssid);
+        } else if (argc == 3) {
+            // connect with password
+            char *pass = argv[2];
+            print("Connecting to AP '%s', password '%s'\n", ssid, pass);
+            WiFi.begin(ssid, pass);
+        }
+        // wait for connection
+        for (int i = 0; i < 20; i++) {
+            print(".");
+            int status = WiFi.status();
+            if (WiFi.status() == 3) {
+                break;
             }
-        } else if (strcmp(cmd, "diag") == 0) {
-            WiFi.printDiag(Serial);
+            delay(500);
         }
     }
-    
+
+    // show wifi status
     int status = WiFi.status();
     print("Wifi status = %d\n", status);
 
-
-    return 0;
+    return (status == 3) ? 0 : status;
 }
 
 #define NTP_PACKET_SIZE 48
@@ -367,7 +333,7 @@ static int do_rtc(int argc, char *argv[])
     print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
 
     RtcTemperature t = rtc.GetTemperature();
-    print("Temperature: %3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
+    print("Temperature:%3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
 
     return 0;
 }
@@ -389,7 +355,7 @@ static int do_http(int argc, char *argv[])
     if (argc > 1) {
         cmd = argv[1];
     }
-    char *url = "http://posttestserver.com/post.php";
+    char *url = "http://posttestserver.com/post.php?dir=bertrik";
     if (argc > 2) {
         url = argv[2];
     }
@@ -407,6 +373,66 @@ static int do_http(int argc, char *argv[])
     client.end();
     
     return res;
+}
+
+static int do_upload(int argc, char *argv[])
+{
+    if (argc < 2) {
+        print("upload <file> [url]\n");
+        return -1;
+    }
+    char *file = argv[1];
+    char *url = "http://posttestserver.com/post.php?dir=bertrik";
+    if (argc >= 3) {
+        url = argv[2];
+    }
+    
+    print("Reading file %s ...", file);
+    File f = SPIFFS.open(file, "r");
+    int size = f.size();
+    printf("(%d bytes)...", size);
+    uint8_t *m = (uint8_t *)malloc(size);
+    for (int i = 0; i < size; i++) {
+        int c = f.read();
+        m[i] = c;
+        if ((i % 256) == 0) {
+            print(".");
+        }
+    }
+    f.close();
+    print("done\n");
+    
+    HTTPClient client;
+    print("HTTP begin ...");
+    client.begin(url);
+    print("POST ...");
+    int res = client.sendRequest("POST", m, size);
+    free(m);
+    print("Code %d\n", res);
+    if (res == HTTP_CODE_OK) {
+        print("Response:");
+        Serial.println(client.getString());
+    }
+    client.end();
+    
+    return res;
+}
+
+static int do_gpio(int argc, char *argv[])
+{
+    int pin = 0;
+    if (argc >= 2) {
+        pin = atoi(argv[1]);
+    }
+    int val = digitalRead(pin);
+    print("Pin %d = %d\n", pin, val);
+    
+    if (argc >= 3) {
+        val = atoi(argv[2]);
+        print("Pin %d => %d\n", pin, val);
+        digitalWrite(pin, val);
+    }
+    return val;
 }
 
 // forward declaration of help function
@@ -427,6 +453,8 @@ static const cmd_t commands[] = {
     {"ntp",     do_ntp,     "ntp commands"},
     {"sleep",   do_sleep,   "sleep commands"},
     {"http",    do_http,    "[get|post] http commands"},
+    {"gpio",    do_gpio,    "<pin> [value] get/set GPIO"},
+    {"upload",  do_upload,  "<file> [url]"},
     {"", NULL, ""}
 };
 
@@ -462,23 +490,39 @@ void setup()
 
     Wire.begin();
     rtc.Begin();
+    
+    // read a GPIO to determine our run mode
+    pinMode(PIN_RUNMODE, INPUT);
+    digitalWrite(PIN_RUNMODE, HIGH);
+    delay(100);
+    runMode = (digitalRead(PIN_RUNMODE) != LOW);
 }
 
 void loop()
 {
     static char line[128];
-    
-    if (serial_avail()) {
-        int c = serial_getc();
-        bool done = line_edit((char)c, line, sizeof(line));
-        if (done) {
-            int result = cmd_process(commands, line);
-            if (result < 0) {
-                print("%d ERROR\n", result);
-            } else {
-                print("%d OK\n", result);
+ 
+    if (runMode) {
+        // run mode: do a measurement, save it to file, go back to sleep
+        RtcDateTime dt = rtc.GetDateTime();
+        do_scan(1, NULL);
+        int sleeptime = 20 - (dt % 20);
+        print("Sleeping for %d seconds ...", sleeptime);
+        ESP.deepSleep(1000000UL * sleeptime, WAKE_RF_DEFAULT);
+    } else {
+        // debug mode: read commands from the console and execute them
+        if (serial_avail()) {
+            int c = serial_getc();
+            bool done = line_edit((char)c, line, sizeof(line));
+            if (done && (*line != 0)) {
+                int result = cmd_process(commands, line);
+                if (result < 0) {
+                    print("%d ERROR\n", result);
+                } else {
+                    print("%d OK\n", result);
+                }
+                print("$");
             }
-            print("$");
         }
     }
 }
