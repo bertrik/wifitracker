@@ -390,7 +390,7 @@ static int do_upload(int argc, char *argv[])
     print("Reading file %s ...", file);
     File f = SPIFFS.open(file, "r");
     int size = f.size();
-    printf("(%d bytes)...", size);
+    print("(%d bytes)...", size);
     uint8_t *m = (uint8_t *)malloc(size);
     for (int i = 0; i < size; i++) {
         int c = f.read();
