@@ -386,29 +386,18 @@ static int do_upload(int argc, char *argv[])
     if (argc >= 3) {
         url = argv[2];
     }
-    
-    print("Reading file %s ...", file);
+    print("Opening file %s ...", file);
     File f = SPIFFS.open(file, "r");
     int size = f.size();
-    print("(%d bytes)...", size);
-    uint8_t *m = (uint8_t *)malloc(size);
-    for (int i = 0; i < size; i++) {
-        int c = f.read();
-        m[i] = c;
-        if ((i % 256) == 0) {
-            print(".");
-        }
-    }
-    f.close();
-    print("done\n");
-    
+    print("%d bytes...\n", size);
+
     HTTPClient client;
     print("HTTP begin ...");
     client.begin(url);
     print("POST ...");
-    int res = client.sendRequest("POST", m, size);
-    free(m);
-    print("Code %d\n", res);
+    int res = client.sendRequest("POST", &f, size);
+    f.close();
+    print("code %d\n", res);
     if (res == HTTP_CODE_OK) {
         print("Response:");
         Serial.println(client.getString());
