@@ -132,10 +132,10 @@ static int do_scan(int argc, char *argv[])
     f.print("\"scan\":[");
     for (int i = 0; i < n; i++) {
         uint8_t *mac = WiFi.BSSID(i);
-        sprintf(line, "{\"mac\":\"%02X:%02X:%02X:%02X:%02X:%02X\", \"rssi\":%d}", 
+        sprintf(line, "{\"mac\":\"%02X:%02X:%02X:%02X:%02X:%02X\",\"rssi\":%d}",
             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
             WiFi.RSSI(i));
-        print("%s\n", line);            
+        print("%s %s\n", line, WiFi.SSID(i).c_str());
         f.print(line);
         if (i < (n - 1)) {
             f.print(",");
