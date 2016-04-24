@@ -78,23 +78,6 @@ static int do_rm(int argc, char *argv[])
     return 0;
 }
 
-static int do_touch(int argc, char *argv[])
-{
-    if (argc < 2) {
-        print("Usage: touch <file>\n");
-        return -1;
-    }
-    
-    char *name = argv[1];
-
-    File f = SPIFFS.open(name, "w");
-    if (f > 0) {
-        f.println("Hello!");
-        f.close();
-    }
-    return 0;
-}
-
 static int do_cat(int argc, char *argv[])
 {
     if (argc != 2) {
@@ -349,32 +332,6 @@ static int do_sleep(int argc, char *argv[])
     return 0;
 }
 
-static int do_http(int argc, char *argv[])
-{
-    char *cmd = "GET";
-    if (argc > 1) {
-        cmd = argv[1];
-    }
-    char *url = "http://posttestserver.com/post.php?dir=bertrik";
-    if (argc > 2) {
-        url = argv[2];
-    }
-    print("Going to perform HTTP %s on '%s'...\n", cmd, url);
-    
-    char payload[64];
-    sprintf(payload, "Hello, this is ESP...\n");
-    
-    HTTPClient client;
-    client.begin(url);
-    int res = client.sendRequest(cmd, (uint8_t *)payload, strlen(payload));
-    if (res == HTTP_CODE_OK) {
-        Serial.println(client.getString());
-    }
-    client.end();
-    
-    return res;
-}
-
 static int do_upload(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -429,19 +386,17 @@ static int do_help(int argc, char *argv[]);
 
 static const cmd_t commands[] = {
     {"help",    do_help,    "lists all commands"},
-    {"scan",    do_scan,    "scan networks"},
+    {"scan",    do_scan,    "scan wifi networks"},
     {"id",      do_id,      "reads various ids"},
     {"ls",      do_ls,      "list files"},
     {"mv",      do_mv,      "<oldname> <newname> rename file"},
     {"rm",      do_rm,      "<name> remove file"},
-    {"touch",   do_touch,   "create file"},
     {"fsinfo",  do_fsinfo,  "file system info"},
-    {"cat",     do_cat,     "<filename> show file contents"},
+    {"cat",     do_cat,     "<name> show file contents"},
     {"wifi",    do_wifi,    "wifi commands"},
     {"rtc",     do_rtc,     "rtc commands"},
     {"ntp",     do_ntp,     "ntp commands"},
-    {"sleep",   do_sleep,   "sleep commands"},
-    {"http",    do_http,    "[get|post] http commands"},
+    {"sleep",   do_sleep,   "<ms> enter deep sleep mode"},
     {"gpio",    do_gpio,    "<pin> [value] get/set GPIO"},
     {"upload",  do_upload,  "<file> [url]"},
     {"", NULL, ""}
