@@ -188,8 +188,7 @@ static int do_wifi(int argc, char *argv[])
         // wait for connection
         for (int i = 0; i < 20; i++) {
             print(".");
-            int status = WiFi.status();
-            if (WiFi.status() == 3) {
+            if (WiFi.status() == WL_CONNECTED) {
                 break;
             }
             delay(500);
@@ -200,7 +199,7 @@ static int do_wifi(int argc, char *argv[])
     int status = WiFi.status();
     print("Wifi status = %d\n", status);
 
-    return (status == 3) ? 0 : status;
+    return (status == WL_CONNECTED) ? 0 : status;
 }
 
 #define NTP_PACKET_SIZE 48
