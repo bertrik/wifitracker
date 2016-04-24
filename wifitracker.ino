@@ -250,22 +250,23 @@ static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *s
 static int do_ntp(int argc, char *argv[])
 {
     char *hostname = "nl.pool.ntp.org";
-    if ((argc >= 2) && strcmp(argv[1], "sync") == 0) {
-        if (argc == 3) {
-            hostname = argv[2];
-        }
-        print("Performing SNTP sync using %s\n", hostname);
-        IPAddress ip;
-        WiFi.hostByName(hostname, ip);
-        Serial.println(ip);
-        uint32_t seconds;
-        if (sntp_sync(2390, ip, 3000, &seconds) >= 0) {
-            RtcDateTime dt = RtcDateTime(seconds);
-            print("Setting date/time to %04d-%02d-%02d %02d:%02d:%02d\n", 
-                dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
-            rtc.SetDateTime(dt);
-        }
+    if (argc == 2) {
+    	hostname = argv[1];
     }
+    print("Performing SNTP sync using %s\n", hostname);
+    IPAddress ip;
+    WiFi.hostByName(hostname, ip);
+    Serial.println(ip);
+    uint32_t seconds;
+    int result = sntp_sync(2390, ip, 3000, &seconds);
+    if (result < 0) {
+        return result;
+    }
+
+    RtcDateTime dt = RtcDateTime(seconds);
+    rtc.SetDateTime(dt);
+    print("Date/time set to %04d-%02d-%02d %02d:%02d:%02d\n", 
+        dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
     return 0;
 }
 
@@ -392,9 +393,9 @@ static const cmd_t commands[] = {
     {"rm",      do_rm,      "<name> remove file"},
     {"fsinfo",  do_fsinfo,  "file system info"},
     {"cat",     do_cat,     "<name> show file contents"},
-    {"wifi",    do_wifi,    "wifi commands"},
+    {"wifi",    do_wifi,    "<ssid> [password] connect to wifi"},
     {"rtc",     do_rtc,     "rtc commands"},
-    {"ntp",     do_ntp,     "ntp commands"},
+    {"ntp",     do_ntp,     "[server] synchronize RTC using ntp"},
     {"sleep",   do_sleep,   "<ms> enter deep sleep mode"},
     {"gpio",    do_gpio,    "<pin> [value] get/set GPIO"},
     {"upload",  do_upload,  "<file> [url]"},
