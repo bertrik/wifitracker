@@ -481,10 +481,10 @@ void setup()
     rtc.Begin();
     
     // read a GPIO to determine our run mode
-    pinMode(PIN_RUNMODE, INPUT);
-    digitalWrite(PIN_RUNMODE, HIGH);
+    pinMode(PIN_RUNMODE, INPUT_PULLUP);
     delay(100);
     runMode = (digitalRead(PIN_RUNMODE) != LOW);
+    pinMode(PIN_RUNMODE, INPUT);
 }
 
 void loop()
