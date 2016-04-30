@@ -323,12 +323,17 @@ static int do_rtc(int argc, char *argv[])
 
 static int do_sleep(int argc, char *argv[])
 {
-    if (argc == 2) {
-        long t = atoi(argv[1]);
-        print("Sleeping for %d ms...\n", t);
-        ESP.deepSleep(1000L * t, WAKE_RF_DEFAULT);
-        print("Woke up!\n");
+    long t = 0;
+    if (argc >= 2) {
+        t = atoi(argv[1]);
     }
+    RFMode mode = WAKE_RF_DEFAULT;
+    if (argc >= 3) {
+        mode = (RFMode)atoi(argv[2]);
+    }
+    print("Sleeping for %d ms in mode %d...\n", t, mode);
+    ESP.deepSleep(1000L * t, mode);
+    print("Woke up!\n");
     return 0;
 }
 
@@ -396,7 +401,7 @@ static const cmd_t commands[] = {
     {"wifi",    do_wifi,    "<ssid> [password] connect to wifi"},
     {"rtc",     do_rtc,     "rtc commands"},
     {"ntp",     do_ntp,     "[server] synchronize RTC using ntp"},
-    {"sleep",   do_sleep,   "<ms> enter deep sleep mode"},
+    {"sleep",   do_sleep,   "[ms] [mode] enter deep sleep mode"},
     {"gpio",    do_gpio,    "<pin> [value] get/set GPIO"},
     {"upload",  do_upload,  "<file> [url]"},
     {"", NULL, ""}
