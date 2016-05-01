@@ -272,51 +272,56 @@ static int do_ntp(int argc, char *argv[])
 
 static int do_rtc(int argc, char *argv[])
 {
-    // get current date/time
-    RtcDateTime dt = rtc.GetDateTime();
-    int year = dt.Year();
-    int month = dt.Month();
-    int day = dt.Day();
-    int hour = dt.Hour();
-    int minute = dt.Minute();
-    int second = dt.Second();
+    // no arg: get current date/time
+    if (argc == 1) {
+        RtcDateTime dt = rtc.GetDateTime();
+        int year = dt.Year();
+        int month = dt.Month();
+        int day = dt.Day();
+        int hour = dt.Hour();
+        int minute = dt.Minute();
+        int second = dt.Second();
 
-    if (argc == 5) {
-        if (strcmp(argv[1], "date") == 0) {
-            // modify date fields
-            year = atoi(argv[2]);
-            month = atoi(argv[3]);
-            day = atoi(argv[4]);
-        }
-        if (strcmp(argv[1], "time") == 0) {
-            // modify time fields
-            hour = atoi(argv[2]);
-            minute = atoi(argv[3]);
-            second = atoi(argv[4]);
-        }
-        dt = RtcDateTime(year, month, day, hour, minute, second);
-        rtc.SetDateTime(dt);
+        print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
+
+        RtcTemperature t = rtc.GetTemperature();
+        print("Temperature:%3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
+        return 0;
     }
-    if (argc == 2) {
-        if (strcmp(argv[1], "alarm") == 0) {
-            print("Setting alarm!\n");
- 
-            RtcDateTime dt = rtc.GetDateTime() + 10;
 
-            DS3231AlarmOne alarm1(
-                    dt.Day(),
-                    dt.Hour(),
-                    dt.Minute(), 
-                    dt.Second(),
-                    DS3231AlarmOneControl_HoursMinutesSecondsMatch);
-            rtc.SetAlarmOne(alarm1);
-        }
+    // arg = "alarm": manipulate alarm register
+    if ((argc == 2) && (strcmp(argv[1], "alarm") == 0)) {
+        print("Setting alarm in 10 seconds!\n");
+        RtcDateTime dt = rtc.GetDateTime() + 10;
+        DS3231AlarmOne alarm1(
+                dt.Day(),
+                dt.Hour(),
+                dt.Minute(), 
+                dt.Second(),
+                DS3231AlarmOneControl_HoursMinutesSecondsMatch);
+        rtc.SetAlarmOne(alarm1);
+        return 0;
     }
-    
-    print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
 
-    RtcTemperature t = rtc.GetTemperature();
-    print("Temperature:%3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
+#if 0 // needs some manipulation in the RTC library to make setReg/getReg public
+    // 1 argument: read raw rtc register
+    int reg = 0;
+    int val = 0;
+    if (argc >= 2) {
+        // raw register read
+        reg = atoi(argv[1]);
+        val = rtc.getReg(reg);
+        print("RTC[0x%02X] = 0x%02X\n", reg, val);
+    }
+
+    // 2 arguments: write raw rtc register
+    if (argc >= 3) {
+        // raw register write
+        val = atoi(argv[2]);
+        print("RTC[0x%02X] => 0x%02X\n", reg, val);
+        rtc.setReg(reg, val);
+    }
+#endif
 
     return 0;
 }
