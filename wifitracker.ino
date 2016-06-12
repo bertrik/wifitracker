@@ -286,13 +286,23 @@ static int do_rtc(int argc, char *argv[])
 
         RtcTemperature t = rtc.GetTemperature();
         print("Temperature:%3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
+
+        DS3231AlarmFlag flags = rtc.LatchAlarmsTriggeredFlags();
+        print("Alarm flags: %d\n", (int)flags);
+
         return 0;
     }
 
     // arg = "alarm": manipulate alarm register
-    if ((argc == 2) && (strcmp(argv[1], "alarm") == 0)) {
-        print("Setting alarm in 10 seconds!\n");
-        RtcDateTime dt = rtc.GetDateTime() + 10;
+    if ((argc >= 2) && (strcmp(argv[1], "alarm") == 0)) {
+        int delay = 3;
+        if (argc >= 3) {
+            delay = atoi(argv[2]);
+        }
+        print("Setting alarm in %d seconds!\n", delay);
+        rtc.SetSquareWavePin(DS3231SquareWavePin_ModeAlarmOne);
+        rtc.LatchAlarmsTriggeredFlags();
+        RtcDateTime dt = rtc.GetDateTime() + delay;
         DS3231AlarmOne alarm1(
                 dt.Day(),
                 dt.Hour(),
@@ -437,10 +447,6 @@ void setup()
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]); 
 
     SPIFFS.begin();
-
-    rtc.LatchAlarmsTriggeredFlags();             
-    rtc.Enable32kHzPin(false);
-    rtc.SetSquareWavePin(DS3231SquareWavePin_ModeAlarmOne);
 
     Wire.begin();
     rtc.Begin();
