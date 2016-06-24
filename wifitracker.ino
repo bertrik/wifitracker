@@ -289,8 +289,6 @@ static int do_rtc(int argc, char *argv[])
 
         DS3231AlarmFlag flags = rtc.LatchAlarmsTriggeredFlags();
         print("Alarm flags: %d\n", (int)flags);
-
-        return 0;
     }
 
     // arg = "alarm": manipulate alarm register
@@ -310,28 +308,7 @@ static int do_rtc(int argc, char *argv[])
                 dt.Second(),
                 DS3231AlarmOneControl_HoursMinutesSecondsMatch);
         rtc.SetAlarmOne(alarm1);
-        return 0;
     }
-
-#if 0 // needs some manipulation in the RTC library to make setReg/getReg public
-    // 1 argument: read raw rtc register
-    int reg = 0;
-    int val = 0;
-    if (argc >= 2) {
-        // raw register read
-        reg = atoi(argv[1]);
-        val = rtc.getReg(reg);
-        print("RTC[0x%02X] = 0x%02X\n", reg, val);
-    }
-
-    // 2 arguments: write raw rtc register
-    if (argc >= 3) {
-        // raw register write
-        val = atoi(argv[2]);
-        print("RTC[0x%02X] => 0x%02X\n", reg, val);
-        rtc.setReg(reg, val);
-    }
-#endif
 
     return 0;
 }
