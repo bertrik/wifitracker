@@ -9,15 +9,16 @@
 #include "ESP8266WiFi.h"
 #include "FS.h"
 
-#include "Wire.h"
-#include "RtcDS3231.h"
 #include "WiFiUdp.h"
 #include "ESP8266HTTPClient.h"
+
+#include <Wire.h>
+#include <RtcDS3231.h>
 
 // the pin we use to determine run or debug mode
 #define PIN_RUNMODE D5
 
-static RtcDS3231 rtc;
+static RtcDS3231<TwoWire> rtc(Wire);
 static boolean runMode;
 
 // formats a printf style string and sends it to the serial port
@@ -283,9 +284,6 @@ static int do_rtc(int argc, char *argv[])
         int second = dt.Second();
 
         print("Date/time:   %04d-%02d-%02d %02d:%02d:%02d\n", year, month, day, hour, minute, second);
-
-        RtcTemperature t = rtc.GetTemperature();
-        print("Temperature:%3d.%02d\n", t.AsWholeDegrees(), t.GetFractional());
 
         DS3231AlarmFlag flags = rtc.LatchAlarmsTriggeredFlags();
         print("Alarm flags: %d\n", (int)flags);
