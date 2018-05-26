@@ -205,7 +205,7 @@ static int do_wifi(int argc, char *argv[])
 
 #define NTP_PACKET_SIZE 48
 
-static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *secsSince2000)
+static int sntp_sync(int localPort, IPAddress& address, unsigned long timeout, uint32_t *secsSince2000)
 {
     // prepare NTP packet
     uint8_t buf[NTP_PACKET_SIZE];
@@ -250,7 +250,7 @@ static int sntp_sync(int localPort, IPAddress& address, int timeout, uint32_t *s
 
 static int do_ntp(int argc, char *argv[])
 {
-    char *hostname = "nl.pool.ntp.org";
+    const char *hostname = "nl.pool.ntp.org";
     if (argc == 2) {
     	hostname = argv[1];
     }
@@ -333,8 +333,8 @@ static int do_upload(int argc, char *argv[])
         print("upload <file> [url]\n");
         return -1;
     }
-    char *file = argv[1];
-    char *url = "http://posttestserver.com/post.php?dir=bertrik";
+    const char *file = argv[1];
+    const char *url = "http://posttestserver.com/post.php?dir=bertrik";
     if (argc >= 3) {
         url = argv[2];
     }
