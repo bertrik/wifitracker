@@ -451,14 +451,23 @@ void loop()
         if (serial_avail()) {
             int c = serial_getc();
             bool done = line_edit((char)c, line, sizeof(line));
-            if (done && (*line != 0)) {
+            if (done) {
                 int result = cmd_process(commands, line);
-                if (result < 0) {
-                    print("%d ERROR\n", result);
-                } else {
-                    print("%d OK\n", result);
+                switch (result) {
+                case CMD_OK:
+                    print("OK\n");
+                    break;
+                case CMD_NO_CMD:
+                    break;
+                case CMD_UNKNOWN:
+                    print("Unknown command, available commands:\n");
+                    do_help(0, NULL);
+                    break;
+                default:
+                    print("%d\n", result);
+                    break;
                 }
-                print("$");
+                print(">");
             }
         }
     }
