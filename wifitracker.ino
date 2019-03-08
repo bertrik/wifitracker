@@ -343,19 +343,20 @@ static int do_upload(int argc, char *argv[])
     int size = f.size();
     print("%d bytes...\n", size);
 
-    HTTPClient client;
+    WiFiClient wifiClient;
+    HTTPClient httpClient;
     print("HTTP begin ...");
-    client.begin(url);
+    httpClient.begin(wifiClient, url);
     print("POST ...");
-    int res = client.sendRequest("POST", &f, size);
+    int res = httpClient.sendRequest("POST", &f, size);
     f.close();
     print("code %d\n", res);
     if (res == HTTP_CODE_OK) {
         print("Response:");
-        Serial.println(client.getString());
+        Serial.println(httpClient.getString());
     }
-    client.end();
-    
+    httpClient.end();
+
     return res;
 }
 
